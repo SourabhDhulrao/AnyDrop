@@ -35,10 +35,16 @@ export default function Navbar() {
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition">
-              <Zap className="w-5 h-5 text-slate-950 fill-slate-950" />
-            </div>
-            <span className="font-bold text-slate-100 text-lg tracking-tight">AnyDrop</span>
+            <img
+              src="/logo.png"
+              alt="AnyDrop Logo"
+              className="w-8 h-9 object-contain group-hover:scale-105 transition-transform"
+            />
+            <img
+              src="/brand-text.png"
+              alt="AnyDrop"
+              className="h-6 w-auto object-contain brightness-200"
+            />
           </Link>
 
           {/* Desktop nav */}

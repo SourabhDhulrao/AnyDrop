@@ -18,7 +18,11 @@ export const metadata: Metadata = {
     description: "Send photos, videos, files and more between devices instantly. No app, no account and no same Wi-Fi required.",
   },
   manifest: "/manifest.json",
-  icons: { icon: "/favicon.ico" },
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

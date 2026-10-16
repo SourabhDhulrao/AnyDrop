@@ -253,12 +253,16 @@ export default function AnyDropDashboard() {
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-xl bg-[#1D68EC] flex items-center justify-center shadow-sm shadow-blue-500/25 group-hover:scale-105 transition">
-              <Zap className="w-4 h-4 text-white fill-white" />
-            </div>
-            <span className="font-bold text-lg tracking-tight text-slate-900">
-              AnyDrop
-            </span>
+            <img
+              src="/logo.png"
+              alt="AnyDrop Logo"
+              className="w-8 h-9 object-contain drop-shadow-xs group-hover:scale-105 transition-transform"
+            />
+            <img
+              src="/brand-text.png"
+              alt="AnyDrop"
+              className="h-6 w-auto object-contain"
+            />
           </Link>
         </div>
       </header>
