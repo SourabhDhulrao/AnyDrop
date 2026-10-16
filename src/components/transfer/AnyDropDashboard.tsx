@@ -3,8 +3,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
-  Zap, QrCode, Download, Radio, Send, Copy, Check,
-  ExternalLink, Plus, Camera
+  Zap, Download, Radio, Send, Copy, Check,
+  ExternalLink, Camera, Image as ImgIcon
 } from "lucide-react";
 import { formatBytes } from "@/lib/device";
 import { useDevice }   from "@/hooks/useDevice";
@@ -17,10 +17,9 @@ import IncomingTransferModal from "@/components/transfer/IncomingTransferModal";
 import IncomingTextModal     from "@/components/transfer/IncomingTextModal";
 import QrModal               from "@/components/transfer/QrModal";
 import QrScannerModal        from "@/components/transfer/QrScannerModal";
-import RoomModal             from "@/components/transfer/RoomModal";
 import type { DeviceInfo }   from "@/types/signaling";
 
-type MobileTab = "radar" | "transfer" | "received" | "room";
+type MobileTab = "radar" | "transfer" | "received";
 const DEFAULT_ROOM = "ANYDROP-MAIN-01";
 
 export default function AnyDropDashboard() {
@@ -34,11 +33,8 @@ export default function AnyDropDashboard() {
   const [files, setFiles] = useState<File[]>([]);
   const [showQR, setShowQR] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
-  const [showRoomModal, setShowRoomModal] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
-  const [customRoomInput, setCustomRoomInput] = useState("");
-  const [copiedRoom, setCopiedRoom] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   const dcRef = useRef<RTCDataChannel | null>(null);
@@ -219,21 +215,6 @@ export default function AnyDropDashboard() {
     declineTransfer(dcRef.current, sendSignal);
   };
 
-  const copyRoom = () => {
-    if (!room.roomId) return;
-    navigator.clipboard.writeText(room.roomId);
-    setCopiedRoom(true);
-    setTimeout(() => setCopiedRoom(false), 2000);
-  };
-
-  const handleJoinCustomRoom = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customRoomInput.trim()) return;
-    joinRoom(customRoomInput.trim().toUpperCase());
-    setCustomRoomInput("");
-    setMobileTab("radar");
-  };
-
   return (
     <div className="min-h-screen text-slate-800 flex flex-col relative overflow-x-hidden">
       {/* ── Modals ── */}
@@ -256,16 +237,8 @@ export default function AnyDropDashboard() {
         onClose={() => setShowScanner(false)}
         onJoinRoom={(scannedRoom) => joinRoom(scannedRoom)}
       />
-      <RoomModal
-        open={showRoomModal}
-        currentRoomId={room.roomId}
-        peerCount={room.peers.length}
-        onJoinRoom={(roomId) => joinRoom(roomId)}
-        onCreateRoom={createRoom}
-        onClose={() => setShowRoomModal(false)}
-      />
 
-      {/* ── Fresh Sky Header matching screenshot ── */}
+      {/* ── Fresh Sky Header ── */}
       <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-md border-b border-[#D5E6F5]/80">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Brand Logo */}
@@ -277,15 +250,6 @@ export default function AnyDropDashboard() {
               AnyDrop
             </span>
           </Link>
-
-          {/* Room Pill Badge (matching reference screenshot) */}
-          <button
-            onClick={() => setShowRoomModal(true)}
-            className="text-[11px] text-slate-600 hover:text-[#1D68EC] font-mono font-bold tracking-wider uppercase transition flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/80 border border-[#D5E6F5] shadow-xs"
-            title="Switch Room"
-          >
-            <span>{room.roomId ?? "Connecting..."}</span>
-          </button>
         </div>
       </header>
 
@@ -325,19 +289,7 @@ export default function AnyDropDashboard() {
             }`}
           >
             <Download className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>Vault {receivedFiles.length > 0 ? `(${receivedFiles.length})` : ""}</span>
-          </button>
-
-          <button
-            onClick={() => setMobileTab("room")}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition active:scale-95 ${
-              mobileTab === "room"
-                ? "bg-[#E0F2FE] text-[#0284C7] shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <QrCode className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>Room</span>
+            <span>Received Stuff {receivedFiles.length > 0 ? `(${receivedFiles.length})` : ""}</span>
           </button>
         </div>
       </div>
@@ -375,80 +327,6 @@ export default function AnyDropDashboard() {
           </div>
         )}
 
-        {/* ── Room Tab (Mobile Only) ── */}
-        <div className={`lg:hidden flex flex-col gap-4 ${mobileTab !== "room" ? "hidden" : "flex"}`}>
-          <div className="glass-panel p-5 flex flex-col gap-4 bg-white border border-[#DCE7F2]">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E2EBF2]">
-              <div className="flex items-center gap-2">
-                <Radio className="w-4 h-4 text-[#1D68EC]" />
-                <h3 className="font-semibold text-sm text-slate-900">Room & Pairing</h3>
-              </div>
-              <button
-                onClick={() => setShowQR(true)}
-                className="px-3 py-1 rounded-xl bg-[#E0F2FE] text-[#0284C7] border border-[#BAE6FD] text-xs font-semibold"
-              >
-                Open QR
-              </button>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-[#F8FAFD] border border-[#E2EBF2] flex flex-col gap-2">
-              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Active Room Code</span>
-              <div className="flex items-center justify-between">
-                <span className="text-xl font-mono font-bold text-[#1D68EC] tracking-wider">
-                  {room.roomId ?? "Connecting..."}
-                </span>
-                <button
-                  onClick={copyRoom}
-                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-[#CFDFEC] text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-                >
-                  {copiedRoom ? <Check className="w-3.5 h-3.5 text-[#1D68EC]" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedRoom ? "Copied" : "Copy"}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setShowScanner(true)}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-[#1D68EC] hover:bg-[#1557D4] text-white text-xs font-semibold flex items-center justify-center gap-2 transition shadow-xs"
-              >
-                <Camera className="w-4 h-4" />
-                <span>Scan Room QR</span>
-              </button>
-              <button
-                type="button"
-                onClick={createRoom}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 border border-[#CFDFEC] text-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition shadow-xs"
-              >
-                <Plus className="w-4 h-4 text-[#1D68EC]" />
-                <span>New Room</span>
-              </button>
-            </div>
-
-            {/* Join Another Room Form */}
-            <form onSubmit={handleJoinCustomRoom} className="flex flex-col gap-2 mt-1">
-              <label className="text-xs font-semibold text-slate-700">
-                Join a different Room:
-              </label>
-              <div className="flex gap-2">
-                <input
-                  value={customRoomInput}
-                  onChange={(e) => setCustomRoomInput(e.target.value)}
-                  placeholder="Enter Room Code (e.g. STUDIO-1)"
-                  className="flex-1 rounded-xl bg-[#F8FAFD] border border-[#CFDFEC] px-3 py-2 text-xs text-slate-900 uppercase placeholder:normal-case font-mono focus:outline-none focus:border-[#1D68EC]"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#1D68EC] hover:bg-[#1557D4] text-white font-semibold text-xs shadow-xs"
-                >
-                  Join
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
         {/* ── Desktop Two-Column Layout / Mobile Conditional View ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Column 1: Radar Discovery (Desktop always visible, Mobile when tab=radar) */}
@@ -462,12 +340,9 @@ export default function AnyDropDashboard() {
                     Nearby Devices
                   </h2>
                 </div>
-                <button
-                  onClick={() => setShowRoomModal(true)}
-                  className="text-xs px-3 py-1 rounded-full bg-[#F0F6FC] hover:bg-[#E2EFFC] text-slate-500 hover:text-slate-800 border border-[#D5E6F5] font-mono transition"
-                >
+                <div className="text-xs px-3 py-1 rounded-full bg-[#F0F6FC] text-slate-500 border border-[#D5E6F5] font-mono">
                   {room.peers.length} discovered
-                </button>
+                </div>
               </div>
 
               {/* The Interactive Sonar Radar */}
@@ -512,19 +387,19 @@ export default function AnyDropDashboard() {
             />
           </div>
 
-          {/* Column 3 / Full Width: Received Files & Messages Vault matching reference screenshot */}
+          {/* Column 3 / Full Width: Received Stuff (Files & Messages) */}
           <div className={`col-span-1 lg:col-span-12 ${mobileTab !== "received" ? "hidden lg:block" : "block"}`}>
             <div className="glass-panel p-5 sm:p-6 flex flex-col gap-5 bg-white border border-[#DCE7F2]">
-              {/* Vault Header */}
+              {/* Received Stuff Header */}
               <div className="flex items-center justify-between pb-3 border-b border-[#E2EBF2]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#E0F2FE] border border-[#BAE6FD] flex items-center justify-center text-[#0284C7]">
                     <Download className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm text-slate-900">Received Vault</h3>
+                    <h3 className="font-semibold text-sm text-slate-900">Received Stuff</h3>
                     <p className="text-xs text-slate-400">
-                      Ready to receive transfers and messages
+                      Ready to receive original files, high-res photos, and messages
                     </p>
                   </div>
                 </div>
@@ -560,19 +435,25 @@ export default function AnyDropDashboard() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {receivedFiles.map((file, i) => {
                         const objectUrl = URL.createObjectURL(file);
-                        const isImage = file.type.startsWith("image/");
+                        const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+                        const isHeicOrRaw = ["heic", "heif", "raw", "dng", "cr2", "nef"].includes(ext);
+                        const isBrowserRenderableImage = file.type.startsWith("image/") && !isHeicOrRaw;
                         return (
                           <div
                             key={`rec-file-${i}`}
                             className="p-3 rounded-2xl bg-[#F8FAFD] hover:bg-[#EFF6FF] border border-[#E2EBF2] flex items-center justify-between gap-3 text-xs transition"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              {isImage ? (
+                              {isBrowserRenderableImage ? (
                                 <img
                                   src={objectUrl}
                                   alt={file.name}
                                   className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
                                 />
+                              ) : isHeicOrRaw ? (
+                                <div className="w-8 h-8 rounded-lg bg-[#E0FBF6] border border-[#99F6E4] flex items-center justify-center text-[#0D9488] flex-shrink-0">
+                                  <ImgIcon className="w-4 h-4" />
+                                </div>
                               ) : (
                                 <div className="w-8 h-8 rounded-lg bg-[#E0F2FE] border border-[#BAE6FD] flex items-center justify-center text-[#0284C7] flex-shrink-0">
                                   <Download className="w-4 h-4" />

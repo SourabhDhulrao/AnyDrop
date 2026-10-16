@@ -56,25 +56,16 @@ export interface TransferProgress {
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const CHUNK_SIZE = 64 * 1024;  // 64 KB per chunk (optimal for both WebRTC and WebSocket)
+const CHUNK_SIZE = 128 * 1024; // 128 KB per chunk (high throughput WebRTC & WebSocket)
 const BUFFERED_AMOUNT_THRESHOLD = 2 * 1024 * 1024; // 2MB backpressure
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-async function sha256(buffer: ArrayBuffer): Promise<string> {
-  try {
-    const digest = await crypto.subtle.digest("SHA-256", buffer);
-    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
-  } catch {
-    return "";
-  }
-}
-
+// ── Ultra-fast Base64 conversion helpers (avoids single-character concat freeze) ──
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = "";
   const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  let binary = "";
+  const sliceSize = 0x8000; // 32KB slice avoids call stack overflow
+  for (let i = 0; i < bytes.length; i += sliceSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + sliceSize) as unknown as number[]);
   }
   return btoa(binary);
 }
@@ -459,7 +450,6 @@ export function useTransfer(): {
       const meta = metas[fi];
 
       const buffer  = await file.arrayBuffer();
-      const checksum = await sha256(buffer);
       const totalChunks = Math.ceil(buffer.byteLength / CHUNK_SIZE);
 
       dispatchMsg({
@@ -469,18 +459,17 @@ export function useTransfer(): {
         fileName: meta.name,
         fileSize: meta.size,
         totalChunks,
-        checksum,
       });
 
       for (let ci = 0; ci < totalChunks; ci++) {
-        // Backpressure check
+        // High-speed backpressure check
         if (isDcReady && dc.bufferedAmount > BUFFERED_AMOUNT_THRESHOLD) {
           while (dc.bufferedAmount > BUFFERED_AMOUNT_THRESHOLD) {
-            await new Promise(r => setTimeout(r, 40));
+            await new Promise(r => setTimeout(r, 6));
           }
-        } else if (!isDcReady && ci % 8 === 0) {
-          // Small yield for WebSocket queue
-          await new Promise(r => setTimeout(r, 8));
+        } else if (!isDcReady && ci % 10 === 0) {
+          // Small micro-yield for WebSocket relay queue
+          await new Promise(r => setTimeout(r, 4));
         }
 
         const chunk = buffer.slice(ci * CHUNK_SIZE, (ci + 1) * CHUNK_SIZE);
@@ -494,7 +483,7 @@ export function useTransfer(): {
           combined.set(new Uint8Array(chunk), 4);
           dc.send(combined.buffer);
         } else {
-          // WebSocket relay format: Base64 chunk
+          // WebSocket relay format: Fast Base64 chunk
           dispatchMsg({
             type: "TRANSFER_CHUNK",
             transferId,
@@ -541,18 +530,27 @@ export function useTransfer(): {
 
     const acceptPayload = { type: "TRANSFER_ACCEPT", transferId: req.transferId };
 
+    // Send accept via WebRTC if open
     if (targetDc && targetDc.readyState === "open") {
-      targetDc.send(JSON.stringify(acceptPayload));
-      console.log(`[useTransfer] Sent TRANSFER_ACCEPT via WebRTC for ${req.transferId}`);
-    } else if (wsSend && senderId) {
-      wsSend({
-        type: "TRANSFER_DATA",
-        targetId: senderId,
-        payload: acceptPayload,
-      });
-      console.log(`[useTransfer] Sent TRANSFER_ACCEPT via WebSocket to ${senderId}`);
-    } else {
-      console.warn("[useTransfer] No valid channel to send TRANSFER_ACCEPT");
+      try {
+        targetDc.send(JSON.stringify(acceptPayload));
+        console.log(`[useTransfer] Sent TRANSFER_ACCEPT via WebRTC for ${req.transferId}`);
+      } catch (e) {
+        console.warn("[useTransfer] Error sending via targetDc:", e);
+      }
+    }
+    // Also send via WebSocket if senderId exists to ensure immediate delivery
+    if (wsSend && senderId) {
+      try {
+        wsSend({
+          type: "TRANSFER_DATA",
+          targetId: senderId,
+          payload: acceptPayload,
+        });
+        console.log(`[useTransfer] Sent TRANSFER_ACCEPT via WebSocket to ${senderId}`);
+      } catch (e) {
+        console.warn("[useTransfer] Error sending accept via ws:", e);
+      }
     }
 
     setProgress({

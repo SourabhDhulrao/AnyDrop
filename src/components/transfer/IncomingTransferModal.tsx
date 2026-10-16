@@ -25,20 +25,20 @@ export default function IncomingTransferModal({ request, onAccept, onDecline }: 
           >
             {/* Top Icon */}
             <div className="flex flex-col items-center text-center">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 mb-3 shadow-sm">
+              <div className="w-14 h-14 rounded-2xl bg-[#E0F2FE] border border-[#BAE6FD] flex items-center justify-center text-[#0284C7] mb-3 shadow-sm">
                 <Download className="w-7 h-7 animate-bounce" />
               </div>
               <h3 className="text-lg font-bold text-slate-900">Incoming Transfer</h3>
               <p className="text-xs text-slate-500 mt-1">
-                <span className="font-semibold text-indigo-700">{request.senderName}</span> wants to share files with you
+                <span className="font-semibold text-[#1D68EC]">{request.senderName}</span> wants to share files with you
               </p>
             </div>
 
             {/* Files Summary Box */}
-            <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3.5 flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-slate-500 pb-1.5 border-b border-slate-200">
+            <div className="rounded-2xl bg-[#F8FAFD] border border-[#E2EBF2] p-3.5 flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs text-slate-500 pb-1.5 border-b border-[#E2EBF2]">
                 <span>{request.files.length} File{request.files.length !== 1 ? "s" : ""}</span>
-                <span className="font-mono text-indigo-600 font-semibold">{formatBytes(request.totalSize)}</span>
+                <span className="font-mono text-[#1D68EC] font-semibold">{formatBytes(request.totalSize)}</span>
               </div>
 
               <div className="max-h-32 overflow-y-auto flex flex-col gap-1.5 pr-1">
@@ -56,7 +56,7 @@ export default function IncomingTransferModal({ request, onAccept, onDecline }: 
               <button
                 id="decline-transfer-btn"
                 onClick={onDecline}
-                className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition flex items-center justify-center gap-1.5 border border-slate-200"
+                className="flex-1 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition flex items-center justify-center gap-1.5 border border-[#CFDFEC] shadow-xs active:scale-95"
               >
                 <X className="w-4 h-4" />
                 <span>Decline</span>
@@ -65,7 +65,7 @@ export default function IncomingTransferModal({ request, onAccept, onDecline }: 
               <button
                 id="accept-transfer-btn"
                 onClick={onAccept}
-                className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-md shadow-indigo-600/25 flex items-center justify-center gap-1.5"
+                className="flex-1 py-3 rounded-xl bg-[#1D68EC] hover:bg-[#1557D4] text-white font-semibold text-xs transition shadow-md shadow-blue-500/25 flex items-center justify-center gap-1.5 active:scale-95"
               >
                 <Download className="w-4 h-4" />
                 <span>Accept</span>

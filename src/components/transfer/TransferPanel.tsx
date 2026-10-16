@@ -295,7 +295,7 @@ export default function TransferPanel({
           <input
             ref={mediaInputRef}
             type="file"
-            accept="image/*,video/*"
+            accept="image/*,video/*,.heic,.heif,.raw,.dng,.cr2,.nef,image/heic,image/heif"
             multiple
             className="hidden"
             onChange={handleFileInput}
@@ -345,6 +345,12 @@ export default function TransferPanel({
               <ImgIcon className="w-3.5 h-3.5 text-[#0D9488]" />
               <span>Photos & Videos</span>
             </button>
+          </div>
+
+          {/* Original Quality Notice for iOS & Android */}
+          <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-600 bg-[#F0FDF4] border border-[#BBF7D0] px-2.5 py-1.5 rounded-xl">
+            <Zap className="w-3.5 h-3.5 text-[#0D9488] flex-shrink-0" />
+            <span>Exact Original Quality: 100% loss-free, bit-for-bit with no compression</span>
           </div>
 
           {/* Files List Preview */}
