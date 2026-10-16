@@ -3,9 +3,8 @@ import React, { useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Upload, FileText, Image as ImgIcon, Film, Package, 
-  X, Send, ArrowRight, ShieldCheck, Zap, MessageSquare, 
-  Copy, Check, FileUp, Camera, Smartphone, Monitor, Laptop, Tablet, Radio,
-  Users, CheckSquare, Square, Plus
+  X, Send, Zap, MessageSquare, 
+  Check, FileUp, Smartphone, Monitor, Laptop, Tablet, Radio
 } from "lucide-react";
 import { formatBytes, formatSpeed, formatEta } from "@/lib/device";
 import type { DeviceInfo } from "@/types/signaling";
@@ -34,28 +33,28 @@ interface Props {
 function getDeviceIcon(type?: string) {
   switch (type?.toLowerCase()) {
     case "phone":
-      return <Smartphone className="w-4 h-4 text-emerald-400" />;
+      return <Smartphone className="w-4 h-4 text-[#1D68EC]" />;
     case "tablet":
-      return <Tablet className="w-4 h-4 text-cyan-400" />;
+      return <Tablet className="w-4 h-4 text-[#0284C7]" />;
     case "laptop":
-      return <Laptop className="w-4 h-4 text-indigo-400" />;
+      return <Laptop className="w-4 h-4 text-[#1D68EC]" />;
     default:
-      return <Monitor className="w-4 h-4 text-emerald-400" />;
+      return <Monitor className="w-4 h-4 text-[#1D68EC]" />;
   }
 }
 
 function FileTypeBadge({ name }: { name: string }) {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
   if (["jpg", "jpeg", "png", "gif", "webp", "svg", "heic"].includes(ext)) {
-    return <ImgIcon className="w-4 h-4 text-emerald-400" />;
+    return <ImgIcon className="w-4 h-4 text-[#0D9488]" />;
   }
   if (["mp4", "mov", "avi", "mkv", "webm"].includes(ext)) {
-    return <Film className="w-4 h-4 text-cyan-400" />;
+    return <Film className="w-4 h-4 text-[#0284C7]" />;
   }
   if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) {
-    return <Package className="w-4 h-4 text-amber-400" />;
+    return <Package className="w-4 h-4 text-amber-600" />;
   }
-  return <FileText className="w-4 h-4 text-indigo-400" />;
+  return <FileText className="w-4 h-4 text-[#1D68EC]" />;
 }
 
 export default function TransferPanel({
@@ -85,7 +84,6 @@ export default function TransferPanel({
   const [isSendingText, setIsSendingText] = useState(false);
   const [textSentSuccess, setTextSentSuccess] = useState(false);
 
-  // Active targets: union of selectedPeers and selectedPeer
   const targets: DeviceInfo[] = selectedPeers.length > 0 
     ? selectedPeers 
     : selectedPeer 
@@ -155,27 +153,20 @@ export default function TransferPanel({
   const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
 
   return (
-    <div className="glass-panel p-5 sm:p-6 flex flex-col gap-4">
+    <div className="glass-panel p-5 sm:p-6 flex flex-col gap-4 bg-white border border-[#DCE7F2]">
       {/* ── Target Device(s) Header ── */}
-      <div className="flex flex-col gap-2.5 pb-3 border-b border-slate-800/80">
+      <div className="flex flex-col gap-2 pb-1">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Target Devices
-            </span>
-            {targets.length > 0 && (
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                {targets.length} Selected
-              </span>
-            )}
-          </div>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            TARGET DEVICES
+          </span>
 
           <div className="flex items-center gap-2">
             {peers.length > 1 && onSelectAllPeers && (
               <button
                 type="button"
                 onClick={targets.length === peers.length ? onClearPeers : onSelectAllPeers}
-                className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 transition"
+                className="text-[11px] font-semibold text-[#1D68EC] hover:underline transition"
               >
                 {targets.length === peers.length ? "Deselect All" : "Select All"}
               </button>
@@ -185,7 +176,7 @@ export default function TransferPanel({
               <button
                 type="button"
                 onClick={onClearPeers}
-                className="text-[11px] text-slate-400 hover:text-rose-400 transition"
+                className="text-[11px] text-slate-400 hover:text-rose-600 transition"
               >
                 Clear
               </button>
@@ -193,20 +184,20 @@ export default function TransferPanel({
           </div>
         </div>
 
-        {/* Selected Devices Chips List */}
+        {/* Selected Devices Chips List OR Empty Hint Banner matching screenshot */}
         {targets.length > 0 ? (
-          <div className="flex flex-wrap gap-2 mt-1">
+          <div className="flex flex-wrap gap-2 mt-0.5">
             {targets.map((peer) => (
               <div
                 key={peer.id}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-emerald-500/40 text-xs text-slate-100 shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#EFF6FF] border border-[#BFDBFE] text-xs text-[#1E40AF] shadow-sm"
               >
                 {getDeviceIcon(peer.type)}
-                <span className="font-semibold text-emerald-300 max-w-[120px] truncate">{peer.name}</span>
+                <span className="font-semibold text-[#1E40AF] max-w-[120px] truncate">{peer.name}</span>
                 <button
                   type="button"
                   onClick={() => onDeselectPeer ? onDeselectPeer(peer.id) : onTogglePeer?.(peer)}
-                  className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition ml-0.5"
+                  className="p-0.5 rounded hover:bg-blue-100 text-blue-500 hover:text-rose-600 transition ml-0.5"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -214,8 +205,8 @@ export default function TransferPanel({
             ))}
           </div>
         ) : (
-          <div className="p-2.5 rounded-xl bg-slate-900/50 border border-slate-800 text-xs text-amber-400/90 flex items-center gap-2">
-            <span>⚠️ Tap devices below to choose who receives your transfer</span>
+          <div className="p-2.5 rounded-xl bg-[#F1F6FA] border border-[#E2EBF2] text-xs text-slate-500 flex items-center">
+            <span>Tap devices on the radar or list below to send files</span>
           </div>
         )}
 
@@ -235,24 +226,24 @@ export default function TransferPanel({
                     onClick={() => handlePeerClick(peer)}
                     className={`p-2.5 rounded-xl border flex items-center justify-between transition group text-left ${
                       active
-                        ? "bg-emerald-500/15 border-emerald-500/50 text-slate-100 shadow-sm"
-                        : "bg-slate-900/70 border-slate-800 hover:border-slate-700 text-slate-300"
+                        ? "bg-[#EFF6FF] border-[#93C5FD] text-[#1E40AF] shadow-sm"
+                        : "bg-[#F8FAFD] border-[#E2EBF2] hover:border-[#CFDFEC] text-slate-700"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        active ? "bg-emerald-500/30 text-emerald-300" : "bg-slate-800 text-slate-400"
+                        active ? "bg-blue-200 text-[#1D68EC]" : "bg-white border border-[#E2EBF2] text-slate-500"
                       }`}>
                         {getDeviceIcon(peer.type)}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold truncate">{peer.name}</p>
+                        <p className="text-xs font-semibold truncate">{peer.name}</p>
                         <p className="text-[10px] text-slate-400 capitalize">{peer.type}</p>
                       </div>
                     </div>
 
                     <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition ${
-                      active ? "bg-emerald-500 border-emerald-400 text-slate-950" : "border-slate-700 text-transparent"
+                      active ? "bg-[#1D68EC] border-[#1D68EC] text-white" : "border-slate-300 bg-white text-transparent"
                     }`}>
                       <Check className="w-3.5 h-3.5 stroke-[3]" />
                     </div>
@@ -265,13 +256,13 @@ export default function TransferPanel({
       </div>
 
       {/* ── Mode Switcher: Files vs Quick Text ── */}
-      <div className="flex rounded-xl bg-slate-900/90 p-1 border border-slate-800">
+      <div className="flex rounded-xl bg-white p-1 border border-[#CFDFEC] gap-1">
         <button
           onClick={() => setActiveTab("files")}
           className={`flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
             activeTab === "files"
-              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm"
-              : "text-slate-400 hover:text-slate-200"
+              ? "bg-[#E0F2FE] text-[#0284C7] border border-[#BAE6FD] shadow-xs"
+              : "text-slate-500 hover:text-slate-800"
           }`}
         >
           <FileUp className="w-3.5 h-3.5" />
@@ -281,8 +272,8 @@ export default function TransferPanel({
           onClick={() => setActiveTab("text")}
           className={`flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
             activeTab === "text"
-              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm"
-              : "text-slate-400 hover:text-slate-200"
+              ? "bg-[#E0F2FE] text-[#0284C7] border border-[#BAE6FD] shadow-xs"
+              : "text-slate-500 hover:text-slate-800"
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5" />
@@ -310,7 +301,7 @@ export default function TransferPanel({
             onChange={handleFileInput}
           />
 
-          {/* Dropzone */}
+          {/* Dropzone matching reference design */}
           <div
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
@@ -318,16 +309,16 @@ export default function TransferPanel({
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-2.5 ${
               isDragging
-                ? "border-emerald-400 bg-emerald-500/10 shadow-lg shadow-emerald-500/10 scale-[1.01]"
-                : "border-slate-700/80 bg-slate-900/40 hover:border-emerald-500/50 hover:bg-slate-900/60"
+                ? "border-[#2DD4BF] bg-[#F0FDF4] shadow-md scale-[1.01]"
+                : "border-[#CFDFEC] bg-[#F8FAFD] hover:border-[#2DD4BF] hover:bg-[#F0FDF4]/50"
             }`}
           >
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-md">
+            <div className="w-12 h-12 rounded-2xl bg-[#E0FBF6] border border-[#A7F3D0] flex items-center justify-center text-[#0D9488] shadow-xs">
               <Upload className="w-6 h-6" />
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-slate-200">
+              <p className="text-sm font-semibold text-slate-800">
                 Tap to pick files or drop them here
               </p>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -336,56 +327,56 @@ export default function TransferPanel({
             </div>
           </div>
 
-          {/* Quick Mobile Action Buttons */}
+          {/* Quick Mobile Action Buttons matching screenshot */}
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 text-xs font-semibold text-slate-200 flex items-center justify-center gap-1.5 transition active:scale-95"
+              className="flex-1 py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 border border-[#CFDFEC] text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 transition shadow-xs active:scale-95"
             >
-              <Upload className="w-3.5 h-3.5 text-emerald-400" />
+              <Upload className="w-3.5 h-3.5 text-slate-600" />
               <span>Browse Files</span>
             </button>
             <button
               type="button"
               onClick={() => mediaInputRef.current?.click()}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 text-xs font-semibold text-slate-200 flex items-center justify-center gap-1.5 transition active:scale-95"
+              className="flex-1 py-2.5 px-3 rounded-xl bg-[#E6F8F5] hover:bg-[#D3F5EE] border border-[#B2EFE6] text-xs font-semibold text-[#0F766E] flex items-center justify-center gap-1.5 transition shadow-xs active:scale-95"
             >
-              <Camera className="w-3.5 h-3.5 text-cyan-400" />
+              <ImgIcon className="w-3.5 h-3.5 text-[#0D9488]" />
               <span>Photos & Videos</span>
             </button>
           </div>
 
-          {/* File Queue List */}
+          {/* Files List Preview */}
           {files.length > 0 && (
             <div className="flex flex-col gap-2 mt-1">
-              <div className="flex items-center justify-between text-xs text-slate-400">
+              <div className="flex items-center justify-between text-xs text-slate-600">
                 <span>Selected: {files.length} ({formatBytes(totalBytes)})</span>
                 <button
                   onClick={onClearFiles}
-                  className="text-rose-400 hover:text-rose-300 text-xs font-medium"
+                  className="text-rose-600 hover:text-rose-700 font-semibold"
                 >
                   Clear all
                 </button>
               </div>
 
-              <div className="max-h-44 overflow-y-auto flex flex-col gap-1.5 pr-1">
-                {files.map((file, idx) => (
+              <div className="max-h-48 overflow-y-auto flex flex-col gap-1.5 pr-1">
+                {files.map((file, i) => (
                   <div
-                    key={`${file.name}-${idx}`}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-200"
+                    key={`${file.name}-${i}`}
+                    className="p-2.5 rounded-xl bg-[#F8FAFD] border border-[#E2EBF2] flex items-center justify-between gap-3 text-xs"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <FileTypeBadge name={file.name} />
-                      <span className="truncate max-w-[200px]">{file.name}</span>
-                      <span className="text-[11px] text-slate-500 font-mono flex-shrink-0">
-                        ({formatBytes(file.size)})
-                      </span>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">{file.name}</p>
+                        <p className="text-[10px] text-slate-400">{formatBytes(file.size)}</p>
+                      </div>
                     </div>
 
                     <button
-                      onClick={() => onRemoveFile(idx)}
-                      className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition"
+                      onClick={() => onRemoveFile(i)}
+                      className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-rose-600 transition flex-shrink-0"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -397,83 +388,55 @@ export default function TransferPanel({
         </div>
       )}
 
-      {/* ── Text Tab ── */}
+      {/* ── Quick Text Tab ── */}
       {activeTab === "text" && (
         <div className="flex flex-col gap-3">
           <textarea
             value={textMessage}
             onChange={(e) => setTextMessage(e.target.value)}
-            placeholder="Type or paste a message, note, code, or URL link to send instantly..."
+            placeholder="Type or paste clipboard text, website URLs, passwords, or notes to send instantly..."
             rows={4}
-            className="w-full rounded-2xl bg-slate-900/60 border border-slate-700/80 p-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition resize-none font-sans"
+            className="w-full rounded-2xl bg-[#F8FAFD] border border-[#CFDFEC] p-3.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#1D68EC] transition resize-none font-mono"
           />
 
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={handleAddAsFile}
-              disabled={!textMessage.trim()}
-              className="py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs border border-slate-700/60 disabled:opacity-40 transition flex items-center gap-1.5"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Queue as .txt File</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSendDirectText}
-              disabled={!textMessage.trim() || targets.length === 0 || isSendingText}
-              className={`py-2 px-4 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 active:scale-95 ${
-                textSentSuccess
-                  ? "bg-emerald-500 text-slate-950 border-emerald-400 font-bold"
-                  : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40 disabled:opacity-40"
-              }`}
-            >
-              {textSentSuccess ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Sent Instantly!</span>
-                </>
-              ) : isSendingText ? (
-                <>
-                  <Radio className="w-3.5 h-3.5 animate-spin" />
-                  <span>Sending...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Send Direct Now</span>
-                </>
-              )}
-            </button>
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>{textMessage.length} characters</span>
+            {textMessage.trim() && (
+              <button
+                type="button"
+                onClick={handleAddAsFile}
+                className="text-[11px] text-[#1D68EC] hover:underline font-semibold"
+              >
+                Convert to .txt File
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {/* ── Active Transfer Progress Bar ── */}
       {progress && (
-        <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 flex flex-col gap-2">
+        <div className="p-3.5 rounded-2xl bg-[#EFF6FF] border border-[#BFDBFE] flex flex-col gap-2">
           {(() => {
             const pct = Math.min(100, Math.round((progress.transferred / Math.max(progress.total, 1)) * 100));
             return (
               <>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-emerald-300">
+                  <span className="font-semibold text-[#1E40AF]">
                     {progress.status === "completed" ? "Transfer Complete!" : progress.speed > 0 ? "Transferring..." : "Connecting..."}
                   </span>
-                  <span className="font-mono text-emerald-400 font-bold">{pct}%</span>
+                  <span className="font-mono text-[#1D68EC] font-bold">{pct}%</span>
                 </div>
 
-                {/* Neon track */}
-                <div className="h-2 rounded-full bg-slate-800 overflow-hidden relative">
+                <div className="h-2 rounded-full bg-blue-100 overflow-hidden relative">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 rounded-full"
+                    className="h-full bg-gradient-to-r from-[#1D68EC] to-[#2DD4BF] rounded-full"
                     style={{ width: `${pct}%` }}
                     transition={{ ease: "easeOut", duration: 0.2 }}
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono">
                   <span>{formatBytes(progress.transferred)} / {formatBytes(progress.total)}</span>
                   <span>{formatSpeed(progress.speed)} · {formatEta(progress.eta)}</span>
                 </div>
@@ -483,13 +446,13 @@ export default function TransferPanel({
         </div>
       )}
 
-      {/* ── Send CTA Button ── */}
+      {/* ── Send CTA Button (Vibrant Royal Blue) ── */}
       {activeTab === "files" ? (
         <button
           id="send-files-btn"
           onClick={onSend}
           disabled={targets.length === 0 || files.length === 0 || isSending}
-          className="btn-primary-glow w-full py-3.5 rounded-2xl text-base justify-center shadow-lg active:scale-98 transition disabled:opacity-40"
+          className="btn-primary-blue w-full py-3.5 rounded-2xl text-base justify-center transition disabled:opacity-40"
         >
           <Zap className={`w-5 h-5 ${isSending ? "animate-pulse" : ""}`} />
           <span>
@@ -513,8 +476,8 @@ export default function TransferPanel({
           id="send-text-btn"
           onClick={handleSendDirectText}
           disabled={targets.length === 0 || !textMessage.trim() || isSendingText}
-          className={`btn-primary-glow w-full py-3.5 rounded-2xl text-base justify-center shadow-lg active:scale-98 transition disabled:opacity-40 ${
-            textSentSuccess ? "!bg-emerald-500 !text-slate-950 font-bold" : ""
+          className={`btn-primary-blue w-full py-3.5 rounded-2xl text-base justify-center transition disabled:opacity-40 ${
+            textSentSuccess ? "!bg-[#0D9488] font-bold" : ""
           }`}
         >
           {textSentSuccess ? (

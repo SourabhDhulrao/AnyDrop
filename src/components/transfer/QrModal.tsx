@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Copy, Check, QrCode, Sparkles, Clock } from "lucide-react";
+import { X, Copy, Check, QrCode, Clock } from "lucide-react";
 import QRCode from "qrcode";
 
 interface Props {
@@ -16,7 +16,7 @@ export default function QrModal({ open, roomId, onClose }: Props) {
   const [timer, setTimer] = useState(300);
 
   const shareUrl = typeof window !== "undefined" && roomId
-    ? `${window.location.origin}/share?room=${encodeURIComponent(roomId)}`
+    ? `${window.location.origin}/?room=${encodeURIComponent(roomId)}`
     : "";
 
   useEffect(() => {
@@ -52,49 +52,49 @@ export default function QrModal({ open, roomId, onClose }: Props) {
       {open && (
         <div 
           onClick={onClose}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md"
         >
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 15 }}
+            initial={{ scale: 0.95, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0 }}
+            exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl bg-slate-900/95 border border-emerald-500/30 p-6 shadow-2xl shadow-emerald-950/50 flex flex-col gap-5 text-slate-100"
+            className="w-full max-w-sm rounded-3xl bg-white border border-slate-200 p-6 shadow-2xl flex flex-col gap-5 text-slate-900"
           >
             {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
                   <QrCode className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-100 text-base">Scan to Connect</h3>
-                  <p className="text-[11px] text-slate-400">Point mobile camera to join room</p>
+                  <h3 className="font-semibold text-slate-900 text-sm">Scan to Connect</h3>
+                  <p className="text-[11px] text-slate-500">Scan this code from another device</p>
                 </div>
               </div>
 
               <button
                 id="close-qr-modal"
                 onClick={onClose}
-                className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-slate-200 transition"
+                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* QR Canvas Box */}
-            <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl shadow-inner mx-auto">
-              <canvas ref={canvasRef} className="rounded-lg" />
+            <div className="flex flex-col items-center justify-center p-3.5 bg-slate-50 rounded-2xl border border-slate-200 mx-auto">
+              <canvas ref={canvasRef} className="rounded-lg shadow-sm" />
             </div>
 
             {/* Room Code Badge */}
-            <div className="rounded-2xl bg-slate-950/70 border border-slate-800 p-3 text-center">
-              <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Room Code</span>
-              <p className="text-xl font-mono font-bold text-emerald-400 tracking-widest mt-0.5">
+            <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 text-center">
+              <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Room Code</span>
+              <p className="text-xl font-mono font-bold text-indigo-600 tracking-widest mt-0.5">
                 {roomId ?? "------"}
               </p>
-              <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 mt-1">
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 mt-1">
                 <Clock className="w-3 h-3" />
                 <span>Expires in {qrMin}:{qrSec}</span>
               </div>
@@ -105,9 +105,9 @@ export default function QrModal({ open, roomId, onClose }: Props) {
               <button
                 id="copy-link-btn"
                 onClick={copyLink}
-                className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 border border-slate-700 transition"
+                className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-2 border border-slate-200 transition active:scale-95"
               >
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                {copied ? <Check className="w-4 h-4 text-indigo-600" /> : <Copy className="w-4 h-4 text-slate-500" />}
                 <span>{copied ? "Link Copied!" : "Copy Share Link"}</span>
               </button>
             </div>

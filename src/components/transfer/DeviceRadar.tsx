@@ -1,11 +1,9 @@
 "use client";
-import React, { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useMemo } from "react";
+import { motion } from "framer-motion";
 import { 
   Smartphone, Monitor, Tablet, Laptop, Tv2, 
-  Wifi, QrCode, Copy, Check, Pencil, Radio, Sparkles,
-  Compass, ShieldCheck, Activity, Zap, CheckSquare, Square,
-  Users
+  QrCode, Camera, Pencil, CheckSquare, Square, Users, Check
 } from "lucide-react";
 import type { DeviceInfo } from "@/types/signaling";
 import type { MyDevice } from "@/hooks/useDevice";
@@ -20,11 +18,11 @@ interface Props {
   onSelectAllPeers?: () => void;
   onClearPeers?: () => void;
   onOpenQr: () => void;
-  roomId: string | null;
+  onOpenScanner: () => void;
+  roomId?: string | null;
   onEditName?: () => void;
   wsStatus?: string;
   onReconnect?: () => void;
-  onOpenRoomModal?: () => void;
 }
 
 function getDeviceIcon(type?: string, className = "w-6 h-6") {
@@ -40,7 +38,7 @@ function getDeviceIcon(type?: string, className = "w-6 h-6") {
     case "smartboard":
       return <Tv2 className={className} />;
     default:
-      return <Smartphone className={className} />;
+      return <Laptop className={className} />;
   }
 }
 
@@ -54,24 +52,11 @@ export default function DeviceRadar({
   onSelectAllPeers,
   onClearPeers,
   onOpenQr,
-  roomId,
+  onOpenScanner,
   onEditName,
-  wsStatus = "connected",
-  onReconnect,
-  onOpenRoomModal,
 }: Props) {
-  const [copied, setCopied] = useState(false);
-
-  const copyRoomCode = () => {
-    if (!roomId) return;
-    navigator.clipboard.writeText(roomId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const allPeers = peers;
 
-  // Determine if a peer is selected
   const isPeerSelected = (peer: DeviceInfo) => {
     if (selectedPeers.length > 0) {
       return selectedPeers.some((p) => p.id === peer.id);
@@ -87,7 +72,7 @@ export default function DeviceRadar({
     }
   };
 
-  // Compute radial orbital positions for peers
+  // Radial orbital positions for discovered peers
   const peerPositions = useMemo(() => {
     const count = allPeers.length;
     if (count === 0) return [];
@@ -104,56 +89,16 @@ export default function DeviceRadar({
   const allSelected = allPeers.length > 0 && selectedPeers.length === allPeers.length;
 
   return (
-    <div className="w-full flex flex-col items-center gap-4">
-      {/* ── Top Telemetry HUD Strip ── */}
-      <div className="w-full flex items-center justify-between px-3 py-2 rounded-2xl bg-slate-900/90 border border-emerald-500/20 text-[11px] font-mono shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-              wsStatus === "connected" ? "bg-emerald-400" : "bg-amber-400"
-            }`} />
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${
-              wsStatus === "connected" ? "bg-emerald-500" : "bg-amber-500"
-            }`} />
-          </span>
-          <span className="text-slate-300 font-semibold tracking-wider uppercase text-[10px]">
-            {wsStatus === "connected" ? "Radar Live" : "Reconnecting..."}
-          </span>
-        </div>
-
-        {/* Room Switcher Trigger */}
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onOpenRoomModal}
-            title="Click to switch or create room"
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 border border-slate-700/60 transition"
-          >
-            <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
-            <span className="text-[10px] font-bold text-slate-200">
-              {roomId ?? "ROOM"}
-            </span>
-          </button>
-
-          <button
-            onClick={copyRoomCode}
-            title="Copy Room ID"
-            className="p-1 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* ── Multi-Device Quick Selector Controls ── */}
+    <div className="w-full flex flex-col items-center gap-5">
+      {/* ── Status Bar for Peers ── */}
       {allPeers.length > 0 && (
         <div className="w-full flex items-center justify-between px-1 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
-            <Users className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="flex items-center gap-1.5 text-slate-600 text-[11px] font-medium">
+            <Users className="w-3.5 h-3.5 text-[#0D9488]" />
             <span>
               {selectedPeers.length > 0
-                ? `${selectedPeers.length} of ${allPeers.length} selected for transfer`
-                : "Tap devices to select target(s)"}
+                ? `${selectedPeers.length} of ${allPeers.length} selected`
+                : "Tap a device to select"}
             </span>
           </div>
 
@@ -162,9 +107,13 @@ export default function DeviceRadar({
               <button
                 type="button"
                 onClick={allSelected ? onClearPeers : onSelectAllPeers}
-                className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-emerald-300 border border-slate-700 text-[11px] font-semibold flex items-center gap-1 transition active:scale-95"
+                className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-[11px] font-semibold flex items-center gap-1 transition active:scale-95"
               >
-                {allSelected ? <Square className="w-3 h-3 text-slate-400" /> : <CheckSquare className="w-3 h-3 text-emerald-400" />}
+                {allSelected ? (
+                  <Square className="w-3 h-3 text-slate-500" />
+                ) : (
+                  <CheckSquare className="w-3 h-3 text-[#0D9488]" />
+                )}
                 <span>{allSelected ? "Deselect All" : "Select All"}</span>
               </button>
             )}
@@ -172,59 +121,67 @@ export default function DeviceRadar({
         </div>
       )}
 
-      {/* ── The Sonar Radar Display Canvas ── */}
-      <div className="relative w-full max-w-[420px] aspect-square rounded-3xl overflow-hidden radar-glow border border-emerald-500/30 flex items-center justify-center p-4">
-        {/* Background Radial Concentric Grid */}
+      {/* ── Fresh Seafoam / Mint Circular Radar Display ── */}
+      <div className="relative w-full max-w-[380px] aspect-square rounded-full overflow-hidden radar-dish flex items-center justify-center">
+        {/* Subtle Crosshairs */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[88%] h-[88%] rounded-full border border-emerald-500/15" />
-          <div className="w-[66%] h-[66%] rounded-full border border-emerald-500/20" />
-          <div className="w-[44%] h-[44%] rounded-full border border-emerald-500/25" />
-          <div className="w-[22%] h-[22%] rounded-full border border-emerald-500/30" />
-          <div className="absolute w-full h-[1px] bg-emerald-500/10" />
-          <div className="absolute h-full w-[1px] bg-emerald-500/10" />
+          <div className="absolute w-full h-[1px] bg-[#2DD4BF]/30" />
+          <div className="absolute h-full w-[1px] bg-[#2DD4BF]/30" />
         </div>
 
-        {/* Dynamic Sweeping Radar Beam */}
+        {/* Concentric Seafoam Mint Orbital Rings */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="radar-sweep" />
+          <div className="w-[88%] aspect-square rounded-full border border-[#2DD4BF]/35" />
+          <div className="absolute w-[66%] aspect-square rounded-full border border-[#2DD4BF]/40" />
+          <div className="absolute w-[44%] aspect-square rounded-full border border-[#14B8A6]/45" />
+          <div className="absolute w-[22%] aspect-square rounded-full border border-[#14B8A6]/50" />
         </div>
 
-        {/* ── CENTER: Your Device ── */}
+        {/* Translucent Mint Sonar Sweep Beam */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="radar-sweep-mint" />
+        </div>
+
+        {/* ── CENTER: Your Device Node (Vibrant Sky/Royal Blue) ── */}
         <div className="relative z-20 flex flex-col items-center">
           <motion.div
             className="relative cursor-pointer group"
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.94 }}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.95 }}
             onClick={onEditName}
           >
-            {/* Outer Counter-Rotating Energy Rings */}
-            <div className="energy-ring-outer" />
-            <div className="energy-ring-inner" />
-
-            {/* Glowing Ambient Core Aura */}
-            <div className="absolute -inset-3 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-400 opacity-60 blur-xl group-hover:opacity-90 transition duration-300" />
+            {/* Center Halo & Concentric Cyan Ring */}
+            <div className="energy-ring-center" />
+            <div className="absolute -inset-1 rounded-2xl bg-cyan-400/30 blur-md group-hover:opacity-100 transition duration-300" />
             
-            <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-950/95 border-2 border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.5)] flex flex-col items-center justify-center text-emerald-400">
+            <div className="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-tr from-[#1D68EC] to-[#0284C7] shadow-[0_6px_22px_rgba(29,104,236,0.38)] flex flex-col items-center justify-center text-white">
               {getDeviceIcon(myDevice?.type, "w-7 h-7 sm:w-8 sm:h-8")}
-              <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-emerald-300 mt-1">
+              <span className="text-[10px] font-bold tracking-wider uppercase text-white/95 mt-0.5">
                 YOU
               </span>
             </div>
 
-            {/* Edit pencil icon */}
-            {onEditName && (
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-slate-800 border border-emerald-500/60 flex items-center justify-center text-emerald-400 shadow-md">
-                <Pencil className="w-3 h-3" />
-              </div>
-            )}
+            {/* Small Cyan Indicator Ring */}
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border-2 border-[#2DD4BF] flex items-center justify-center text-[#0D9488] shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-[#2DD4BF]" />
+            </div>
           </motion.div>
 
-          {/* Holographic Device Name Badge */}
-          <div className="mt-3 flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-slate-900/95 border border-emerald-500/40 shadow-lg">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-semibold text-slate-100 max-w-[130px] truncate">
-              {myDevice?.name ?? "Your Device"}
+          {/* Device Name Pill */}
+          <div className="mt-2.5 flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white border border-[#D5E6F5] shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#1D68EC]" />
+            <span className="text-xs font-semibold text-slate-700 max-w-[130px] truncate">
+              {myDevice?.name ?? "Mint Pixel"}
             </span>
+            {onEditName && (
+              <button
+                type="button"
+                onClick={onEditName}
+                className="text-slate-400 hover:text-slate-600 ml-0.5"
+              >
+                <Pencil className="w-2.5 h-2.5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -247,32 +204,29 @@ export default function DeviceRadar({
               className="z-30 flex flex-col items-center"
             >
               <motion.button
-                whileHover={{ scale: 1.15 }}
-                whileTap={{ scale: 0.92 }}
+                whileHover={{ scale: 1.12 }}
+                whileTap={{ scale: 0.94 }}
                 onClick={() => handlePeerClick(peer)}
-                className={`relative flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl transition-all duration-300 shadow-2xl ${
+                className={`relative flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl transition-all duration-200 shadow-md ${
                   isSelected
-                    ? "bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 ring-4 ring-emerald-400/80 shadow-[0_0_30px_rgba(16,185,129,0.8)] scale-105"
-                    : "bg-slate-900/95 text-cyan-300 border-2 border-cyan-400/60 hover:border-emerald-400 hover:text-emerald-300 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+                    ? "bg-gradient-to-tr from-[#1D68EC] to-[#0284C7] text-white ring-3 ring-[#2DD4BF] shadow-[0_6px_20px_rgba(29,104,236,0.4)] scale-105"
+                    : "bg-white text-slate-700 border border-[#D5E6F5] hover:border-[#2DD4BF] hover:text-[#0D9488] hover:shadow-lg"
                 }`}
               >
                 {isSelected && (
-                  <>
-                    <span className="absolute -inset-2 rounded-2xl border-2 border-emerald-400 animate-ping opacity-75" />
-                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-emerald-400 text-slate-950 flex items-center justify-center shadow-lg border-2 border-slate-950">
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    </div>
-                  </>
+                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white text-[#1D68EC] flex items-center justify-center shadow-md border border-[#D5E6F5]">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
                 )}
                 {getDeviceIcon(peer.type, "w-6 h-6 sm:w-7 sm:h-7")}
               </motion.button>
 
               <div 
                 onClick={() => handlePeerClick(peer)}
-                className={`mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide cursor-pointer transition-colors max-w-[120px] truncate text-center shadow-md ${
+                className={`mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide cursor-pointer transition-colors max-w-[120px] truncate text-center shadow-sm ${
                   isSelected
-                    ? "bg-emerald-500/30 text-emerald-300 border border-emerald-400/60 font-bold"
-                    : "bg-slate-900/90 text-slate-200 border border-slate-700 hover:text-white"
+                    ? "bg-[#E0FBF6] text-[#0F766E] border border-[#2DD4BF] font-bold"
+                    : "bg-white text-slate-700 border border-[#D5E6F5] hover:text-[#0D9488]"
                 }`}
               >
                 {peer.name}
@@ -282,45 +236,27 @@ export default function DeviceRadar({
         })}
       </div>
 
-      {/* ── High-Tech Radar HUD Base: Frequency Waveform & Scanning Bar ── */}
-      <div className="w-full max-w-[420px] flex flex-col gap-2.5 px-1">
-        <div className="w-full p-3 rounded-2xl bg-slate-950/80 border border-emerald-500/25 shadow-xl flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex items-end gap-1 h-5 px-1">
-                <div className="equalizer-bar" style={{ animationDelay: "0.1s" }} />
-                <div className="equalizer-bar" style={{ animationDelay: "0.4s" }} />
-                <div className="equalizer-bar" style={{ animationDelay: "0.2s" }} />
-                <div className="equalizer-bar" style={{ animationDelay: "0.6s" }} />
-                <div className="equalizer-bar" style={{ animationDelay: "0.3s" }} />
-              </div>
-              <span className="text-xs font-semibold text-emerald-400">
-                {allPeers.length > 0 
-                  ? `${allPeers.length} Device${allPeers.length > 1 ? "s" : ""} in Room` 
-                  : "Scanning Room for Devices..."}
-              </span>
-            </div>
+      {/* ── Bottom Action Controls: Show QR & Scan QR ── */}
+      <div className="w-full max-w-[380px] flex items-center gap-3">
+        <button
+          id="radar-show-qr-btn"
+          type="button"
+          onClick={onOpenQr}
+          className="flex-1 py-3 px-4 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center justify-center gap-2 border border-[#CFDFEC] shadow-sm hover:border-[#B8D3E8] transition active:scale-95"
+        >
+          <QrCode className="w-4 h-4 text-slate-600" />
+          <span>Show QR Code</span>
+        </button>
 
-            <span className="text-[11px] font-mono text-cyan-400 font-medium">
-              {selectedPeers.length > 0 ? `${selectedPeers.length} TARGET${selectedPeers.length > 1 ? "S" : ""}` : "READY"}
-            </span>
-          </div>
-
-          <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 rounded-full"
-              animate={{
-                x: ["-100%", "100%"],
-              }}
-              transition={{
-                repeat: Infinity,
-                duration: 2.2,
-                ease: "linear",
-              }}
-              style={{ width: "40%" }}
-            />
-          </div>
-        </div>
+        <button
+          id="radar-scan-qr-btn"
+          type="button"
+          onClick={onOpenScanner}
+          className="flex-1 py-3 px-4 rounded-2xl bg-[#1D68EC] hover:bg-[#1755C5] text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 transition active:scale-95"
+        >
+          <Camera className="w-4 h-4 text-white" />
+          <span>Scan QR Code</span>
+        </button>
       </div>
     </div>
   );
