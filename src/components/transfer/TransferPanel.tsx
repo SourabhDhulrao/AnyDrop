@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Upload, FileText, Image as ImgIcon, Film, Package, 
   X, Send, Zap, MessageSquare, 
-  Check, FileUp, Smartphone, Monitor, Laptop, Tablet, Radio
+  Check, FileUp, Smartphone, Monitor, Laptop, Tablet, Radio, Eye
 } from "lucide-react";
 import { formatBytes, formatSpeed, formatEta } from "@/lib/device";
 import type { DeviceInfo } from "@/types/signaling";
 import type { TransferProgress } from "@/hooks/useTransfer";
+import FilePreviewModal from "@/components/transfer/FilePreviewModal";
 
 interface Props {
   selectedPeers?: DeviceInfo[];
@@ -83,6 +84,8 @@ export default function TransferPanel({
   const [textMessage, setTextMessage] = useState("");
   const [isSendingText, setIsSendingText] = useState(false);
   const [textSentSuccess, setTextSentSuccess] = useState(false);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   const targets: DeviceInfo[] = selectedPeers.length > 0 
     ? selectedPeers 
@@ -347,12 +350,6 @@ export default function TransferPanel({
             </button>
           </div>
 
-          {/* Original Quality Notice for iOS & Android */}
-          <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-600 bg-[#F0FDF4] border border-[#BBF7D0] px-2.5 py-1.5 rounded-xl">
-            <Zap className="w-3.5 h-3.5 text-[#0D9488] flex-shrink-0" />
-            <span>Exact Original Quality: 100% loss-free, bit-for-bit with no compression</span>
-          </div>
-
           {/* Files List Preview */}
           {files.length > 0 && (
             <div className="flex flex-col gap-2 mt-1">
@@ -366,26 +363,53 @@ export default function TransferPanel({
                 </button>
               </div>
 
-              <div className="max-h-48 overflow-y-auto flex flex-col gap-1.5 pr-1">
+              <div className="max-h-56 overflow-y-auto flex flex-col gap-1.5 pr-1">
                 {files.map((file, i) => (
                   <div
                     key={`${file.name}-${i}`}
-                    className="p-2.5 rounded-xl bg-[#F8FAFD] border border-[#E2EBF2] flex items-center justify-between gap-3 text-xs"
+                    onClick={() => {
+                      setPreviewFile(file);
+                      setPreviewIndex(i);
+                    }}
+                    className="p-2.5 rounded-xl bg-[#F8FAFD] hover:bg-[#F0F7FF] border border-[#E2EBF2] hover:border-[#BAE6FD] flex items-center justify-between gap-3 text-xs cursor-pointer transition group shadow-2xs"
+                    title="Click to preview file"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <FileTypeBadge name={file.name} />
                       <div className="min-w-0">
-                        <p className="font-semibold text-slate-800 truncate">{file.name}</p>
-                        <p className="text-[10px] text-slate-400">{formatBytes(file.size)}</p>
+                        <p className="font-semibold text-slate-800 truncate group-hover:text-[#1D68EC] transition">
+                          {file.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400">{formatBytes(file.size)} • Click to preview</p>
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => onRemoveFile(i)}
-                      className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-rose-600 transition flex-shrink-0"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewFile(file);
+                          setPreviewIndex(i);
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-[#E0F2FE] text-slate-400 hover:text-[#0284C7] transition flex-shrink-0"
+                        title="Preview this file"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemoveFile(i);
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition flex-shrink-0"
+                        title="Remove file"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -510,6 +534,20 @@ export default function TransferPanel({
           )}
         </button>
       )}
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        file={previewFile}
+        onClose={() => {
+          setPreviewFile(null);
+          setPreviewIndex(null);
+        }}
+        onRemove={() => {
+          if (previewIndex !== null) {
+            onRemoveFile(previewIndex);
+          }
+        }}
+      />
     </div>
   );
 }

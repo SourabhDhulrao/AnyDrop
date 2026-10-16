@@ -56,8 +56,8 @@ export interface TransferProgress {
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const CHUNK_SIZE = 128 * 1024; // 128 KB per chunk (high throughput WebRTC & WebSocket)
-const BUFFERED_AMOUNT_THRESHOLD = 2 * 1024 * 1024; // 2MB backpressure
+const CHUNK_SIZE = 64 * 1024; // 64 KB per chunk (optimal for WebRTC SCTP line-speed)
+const BUFFERED_AMOUNT_THRESHOLD = 1024 * 1024; // 1MB backpressure buffer
 
 // ── Ultra-fast Base64 conversion helpers (avoids single-character concat freeze) ──
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -90,8 +90,9 @@ export function useTransfer(): {
     targetPeerId: string,
     files: File[],
     senderName: string,
-    dc: RTCDataChannel | null,
-    sendViaWs: (msg: any) => void
+    dcOrGetter: RTCDataChannel | (() => RTCDataChannel | null) | null,
+    sendViaWs: (msg: any) => void,
+    ensureDc?: () => Promise<void>
   ) => Promise<void>;
   sendTextMessage:           (
     targetPeerId: string,
@@ -133,6 +134,7 @@ export function useTransfer(): {
 
   // Pending promises waiting for TRANSFER_ACCEPT from receiver
   const pendingAcceptMap = useRef<Map<string, (accepted: boolean) => void>>(new Map());
+  const lastRecvProgressTime = useRef<number>(0);
 
   const clearProgress = useCallback(() => {
     setProgress(null);
@@ -227,21 +229,25 @@ export function useTransfer(): {
           rs.chunks[msg.chunkIndex] = chunkBuf;
           rs.received += chunkBuf.byteLength;
 
-          const elapsed = (Date.now() - rs.startTime) / 1000;
-          const speed   = elapsed > 0 ? rs.received / elapsed : 0;
-          const eta     = speed > 0 ? (rs.total - rs.received) / speed : 0;
+          const now = Date.now();
+          if (now - lastRecvProgressTime.current > 75 || rs.received >= rs.total) {
+            lastRecvProgressTime.current = now;
+            const elapsed = (now - rs.startTime) / 1000;
+            const speed   = elapsed > 0 ? rs.received / elapsed : 0;
+            const eta     = speed > 0 ? (rs.total - rs.received) / speed : 0;
 
-          setProgress({
-            transferId:  rs.transferId,
-            direction:   "receiving",
-            fileIndex:   rs.currentIdx,
-            fileName:    rs.files[rs.currentIdx]?.name ?? "file",
-            transferred: rs.received,
-            total:       rs.total,
-            speed,
-            eta,
-            status:      "active",
-          });
+            setProgress({
+              transferId:  rs.transferId,
+              direction:   "receiving",
+              fileIndex:   rs.currentIdx,
+              fileName:    rs.files[rs.currentIdx]?.name ?? "file",
+              transferred: rs.received,
+              total:       rs.total,
+              speed,
+              eta,
+              status:      "active",
+            });
+          }
         } catch (e) {
           console.error("[useTransfer] Chunk decode error:", e);
         }
@@ -313,21 +319,25 @@ export function useTransfer(): {
       rs.chunks[ci] = chunk;
       rs.received  += chunk.byteLength;
 
-      const elapsed = (Date.now() - rs.startTime) / 1000;
-      const speed   = elapsed > 0 ? rs.received / elapsed : 0;
-      const eta     = speed > 0 ? (rs.total - rs.received) / speed : 0;
+      const now = Date.now();
+      if (now - lastRecvProgressTime.current > 75 || rs.received >= rs.total) {
+        lastRecvProgressTime.current = now;
+        const elapsed = (now - rs.startTime) / 1000;
+        const speed   = elapsed > 0 ? rs.received / elapsed : 0;
+        const eta     = speed > 0 ? (rs.total - rs.received) / speed : 0;
 
-      setProgress({
-        transferId:  rs.transferId,
-        direction:   "receiving",
-        fileIndex:   rs.currentIdx,
-        fileName:    rs.files[rs.currentIdx]?.name ?? "file",
-        transferred: rs.received,
-        total:       rs.total,
-        speed,
-        eta,
-        status:      "active",
-      });
+        setProgress({
+          transferId:  rs.transferId,
+          direction:   "receiving",
+          fileIndex:   rs.currentIdx,
+          fileName:    rs.files[rs.currentIdx]?.name ?? "file",
+          transferred: rs.received,
+          total:       rs.total,
+          speed,
+          eta,
+          status:      "active",
+        });
+      }
       return;
     }
 
@@ -358,15 +368,26 @@ export function useTransfer(): {
     targetPeerId: string,
     files: File[],
     senderName: string,
-    dc: RTCDataChannel | null,
-    sendViaWs: (msg: any) => void
+    dcOrGetter: RTCDataChannel | (() => RTCDataChannel | null) | null,
+    sendViaWs: (msg: any) => void,
+    ensureDc?: () => Promise<void>
   ) => {
     if (files.length === 0 || !targetPeerId) return;
 
     sendViaWsRef.current = sendViaWs;
-    const isDcReady = dc && dc.readyState === "open";
-    const transportMode = isDcReady ? "WebRTC DataChannel" : "WebSocket Relay";
-    console.log(`[useTransfer] Initiating transfer using ${transportMode} to ${targetPeerId}`);
+
+    const getActiveDc = () => {
+      if (typeof dcOrGetter === "function") return dcOrGetter();
+      return dcOrGetter ?? activeDcRef.current;
+    };
+
+    // If DC is not yet open, proactively attempt connection in background
+    let activeDc = getActiveDc();
+    if ((!activeDc || activeDc.readyState !== "open") && ensureDc) {
+      try {
+        ensureDc();
+      } catch {}
+    }
 
     const transferId = generateId();
     const metas: FileMetadata[] = files.map(f => ({
@@ -392,15 +413,18 @@ export function useTransfer(): {
     });
 
     const dispatchMsg = (msgObj: any) => {
-      if (isDcReady && dc.readyState === "open") {
-        dc.send(JSON.stringify(msgObj));
-      } else {
-        sendViaWs({
-          type: "TRANSFER_DATA",
-          targetId: targetPeerId,
-          payload: msgObj,
-        });
+      const currentDc = getActiveDc();
+      if (currentDc && currentDc.readyState === "open") {
+        try {
+          currentDc.send(JSON.stringify(msgObj));
+          return;
+        } catch {}
       }
+      sendViaWs({
+        type: "TRANSFER_DATA",
+        targetId: targetPeerId,
+        payload: msgObj,
+      });
     };
 
     // Send transfer request
@@ -412,7 +436,7 @@ export function useTransfer(): {
         totalSize,
         senderName,
       });
-      console.log(`[useTransfer] Sent TRANSFER_REQUEST for ${files.length} file(s) via ${transportMode}`);
+      console.log(`[useTransfer] Sent TRANSFER_REQUEST for ${files.length} file(s) to ${targetPeerId}`);
     } catch (err) {
       console.error("[useTransfer] Failed to send TRANSFER_REQUEST:", err);
       setProgress(prev => prev ? { ...prev, status: "failed" } : null);
@@ -439,17 +463,31 @@ export function useTransfer(): {
       return;
     }
 
-    console.log("[useTransfer] Transfer accepted! Commencing file transmission...");
+    console.log("[useTransfer] Transfer accepted! Commencing high-speed transmission...");
+
+    // Dynamically check if WebRTC DataChannel is open (wait up to 500ms if just connecting)
+    let currentDc = getActiveDc();
+    if (!currentDc || currentDc.readyState !== "open") {
+      const waitStart = Date.now();
+      while ((!currentDc || currentDc.readyState !== "open") && Date.now() - waitStart < 500) {
+        await new Promise(r => setTimeout(r, 40));
+        currentDc = getActiveDc();
+      }
+    }
+
+    const useDc = Boolean(currentDc && currentDc.readyState === "open");
+    console.log(`[useTransfer] Transport: ${useDc ? "🚀 Direct WebRTC DataChannel (P2P High-Speed)" : "⚡ WebSocket Relay"}`);
 
     // Send files one by one
     let overallTransferred = 0;
     const startTime = Date.now();
+    let lastSendProgressTime = 0;
 
     for (let fi = 0; fi < files.length; fi++) {
       const file = files[fi];
       const meta = metas[fi];
 
-      const buffer  = await file.arrayBuffer();
+      const buffer = await file.arrayBuffer();
       const totalChunks = Math.ceil(buffer.byteLength / CHUNK_SIZE);
 
       dispatchMsg({
@@ -463,25 +501,45 @@ export function useTransfer(): {
 
       for (let ci = 0; ci < totalChunks; ci++) {
         // High-speed backpressure check
-        if (isDcReady && dc.bufferedAmount > BUFFERED_AMOUNT_THRESHOLD) {
-          while (dc.bufferedAmount > BUFFERED_AMOUNT_THRESHOLD) {
-            await new Promise(r => setTimeout(r, 6));
+        const dcNow = getActiveDc();
+        if (useDc && dcNow && dcNow.readyState === "open") {
+          if (dcNow.bufferedAmount > BUFFERED_AMOUNT_THRESHOLD) {
+            await new Promise<void>((resolve) => {
+              const check = () => {
+                if (!dcNow || dcNow.bufferedAmount <= BUFFERED_AMOUNT_THRESHOLD / 2) {
+                  resolve();
+                } else {
+                  setTimeout(check, 2);
+                }
+              };
+              if ("onbufferedamountlow" in dcNow) {
+                dcNow.bufferedAmountLowThreshold = BUFFERED_AMOUNT_THRESHOLD / 2;
+                const handler = () => {
+                  dcNow.removeEventListener("bufferedamountlow", handler);
+                  resolve();
+                };
+                dcNow.addEventListener("bufferedamountlow", handler);
+                setTimeout(resolve, 20);
+              } else {
+                setTimeout(check, 2);
+              }
+            });
           }
-        } else if (!isDcReady && ci % 10 === 0) {
-          // Small micro-yield for WebSocket relay queue
-          await new Promise(r => setTimeout(r, 4));
+        } else if (ci % 8 === 0) {
+          // Zero-delay yield for event loop
+          await new Promise(r => setTimeout(r, 0));
         }
 
         const chunk = buffer.slice(ci * CHUNK_SIZE, (ci + 1) * CHUNK_SIZE);
 
-        if (isDcReady && dc.readyState === "open") {
+        if (useDc && dcNow && dcNow.readyState === "open") {
           // WebRTC binary format: 4 bytes index + chunk bytes
           const header = new ArrayBuffer(4);
           new DataView(header).setUint32(0, ci, true);
           const combined = new Uint8Array(4 + chunk.byteLength);
           combined.set(new Uint8Array(header), 0);
           combined.set(new Uint8Array(chunk), 4);
-          dc.send(combined.buffer);
+          dcNow.send(combined.buffer);
         } else {
           // WebSocket relay format: Fast Base64 chunk
           dispatchMsg({
@@ -494,21 +552,25 @@ export function useTransfer(): {
         }
 
         overallTransferred += chunk.byteLength;
-        const elapsed = (Date.now() - startTime) / 1000;
-        const speed   = elapsed > 0 ? overallTransferred / elapsed : 0;
-        const eta     = speed > 0 ? (totalSize - overallTransferred) / speed : 0;
+        const now = Date.now();
+        if (now - lastSendProgressTime > 75 || overallTransferred >= totalSize) {
+          lastSendProgressTime = now;
+          const elapsed = (now - startTime) / 1000;
+          const speed   = elapsed > 0 ? overallTransferred / elapsed : 0;
+          const eta     = speed > 0 ? (totalSize - overallTransferred) / speed : 0;
 
-        setProgress({
-          transferId,
-          direction:   "sending",
-          fileIndex:   fi,
-          fileName:    file.name,
-          transferred: overallTransferred,
-          total:       totalSize,
-          speed,
-          eta,
-          status:      "active",
-        });
+          setProgress({
+            transferId,
+            direction:   "sending",
+            fileIndex:   fi,
+            fileName:    file.name,
+            transferred: overallTransferred,
+            total:       totalSize,
+            speed,
+            eta,
+            status:      "active",
+          });
+        }
       }
 
       dispatchMsg({ type: "FILE_COMPLETE", transferId, fileId: meta.id });

@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Zap, Download, Radio, Send, Copy, Check,
-  ExternalLink, Camera, Image as ImgIcon
+  ExternalLink, Camera, Image as ImgIcon, Eye
 } from "lucide-react";
 import { formatBytes } from "@/lib/device";
 import { useDevice }   from "@/hooks/useDevice";
@@ -17,6 +17,7 @@ import IncomingTransferModal from "@/components/transfer/IncomingTransferModal";
 import IncomingTextModal     from "@/components/transfer/IncomingTextModal";
 import QrModal               from "@/components/transfer/QrModal";
 import QrScannerModal        from "@/components/transfer/QrScannerModal";
+import FilePreviewModal      from "@/components/transfer/FilePreviewModal";
 import type { DeviceInfo }   from "@/types/signaling";
 
 type MobileTab = "radar" | "transfer" | "received";
@@ -36,6 +37,8 @@ export default function AnyDropDashboard() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+
+  const [previewReceivedFile, setPreviewReceivedFile] = useState<File | null>(null);
 
   const dcRef = useRef<RTCDataChannel | null>(null);
   const [copiedTextId, setCopiedTextId] = useState<string | null>(null);
@@ -110,6 +113,13 @@ export default function AnyDropDashboard() {
       if (exists) {
         return prev.filter(p => p.id !== peer.id);
       } else {
+        // Pre-warm WebRTC P2P DataChannel connection immediately on peer selection
+        const dc = getPeerDataChannel(peer.id);
+        if (!dc || dc.readyState !== "open") {
+          try {
+            initiateCall(peer.id);
+          } catch {}
+        }
         return [...prev, peer];
       }
     });
@@ -162,13 +172,13 @@ export default function AnyDropDashboard() {
     try {
       await Promise.allSettled(
         selectedPeers.map(peer => {
-          const activeDc = getPeerDataChannel(peer.id) || dcRef.current;
           return sendFiles(
             peer.id,
             files,
             device.name,
-            activeDc,
-            sendSignal
+            () => getPeerDataChannel(peer.id) || dcRef.current,
+            sendSignal,
+            () => initiateCall(peer.id)
           );
         })
       );
@@ -441,7 +451,9 @@ export default function AnyDropDashboard() {
                         return (
                           <div
                             key={`rec-file-${i}`}
-                            className="p-3 rounded-2xl bg-[#F8FAFD] hover:bg-[#EFF6FF] border border-[#E2EBF2] flex items-center justify-between gap-3 text-xs transition"
+                            onClick={() => setPreviewReceivedFile(file)}
+                            className="p-3 rounded-2xl bg-[#F8FAFD] hover:bg-[#EFF6FF] border border-[#E2EBF2] hover:border-[#BAE6FD] flex items-center justify-between gap-3 text-xs transition cursor-pointer group shadow-2xs"
+                            title="Click to preview this received file"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               {isBrowserRenderableImage ? (
@@ -460,18 +472,34 @@ export default function AnyDropDashboard() {
                                 </div>
                               )}
                               <div className="min-w-0">
-                                <p className="font-semibold text-slate-800 truncate">{file.name}</p>
-                                <p className="text-[10px] text-slate-400">{formatBytes(file.size)}</p>
+                                <p className="font-semibold text-slate-800 truncate group-hover:text-[#1D68EC] transition">{file.name}</p>
+                                <p className="text-[10px] text-slate-400">{formatBytes(file.size)} • Click to preview</p>
                               </div>
                             </div>
 
-                            <a
-                              href={objectUrl}
-                              download={file.name}
-                              className="px-2.5 py-1 rounded-lg bg-[#1D68EC] hover:bg-[#1557D4] text-white text-[11px] font-semibold transition flex-shrink-0 shadow-xs"
-                            >
-                              Save
-                            </a>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewReceivedFile(file);
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-[#E0F2FE] hover:bg-[#BAE6FD] text-[#0284C7] text-[11px] font-semibold transition flex items-center gap-1 shadow-2xs"
+                                title="Preview this file"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>View</span>
+                              </button>
+
+                              <a
+                                href={objectUrl}
+                                download={file.name}
+                                onClick={(e) => e.stopPropagation()}
+                                className="px-2.5 py-1 rounded-lg bg-[#1D68EC] hover:bg-[#1557D4] text-white text-[11px] font-semibold transition flex items-center gap-1 shadow-xs"
+                              >
+                                Save
+                              </a>
+                            </div>
                           </div>
                         );
                       })}
@@ -528,6 +556,12 @@ export default function AnyDropDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Received File Preview Modal */}
+      <FilePreviewModal
+        file={previewReceivedFile}
+        onClose={() => setPreviewReceivedFile(null)}
+      />
     </div>
   );
 }
