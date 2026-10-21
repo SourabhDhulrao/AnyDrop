@@ -1,0 +1,1 @@
+export const DEFAULT_ROOM = "ANYDROP-MAIN-01";

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { generateRoomCode } from "@/lib/device";
+import { DEFAULT_ROOM } from "@/lib/constants";
 import { useSignaling, type WsStatus } from "./useSignaling";
 import type { SignalingMsg, DeviceInfo } from "@/types/signaling";
 import type { MyDevice } from "./useDevice";
@@ -90,8 +91,13 @@ export function useRoom(myDevice: MyDevice | null): {
     if (typeof window !== "undefined") {
       try {
         const url = new URL(window.location.href);
-        url.searchParams.set("room", cleanId);
-        window.history.replaceState({}, "", url.toString());
+        if (cleanId === DEFAULT_ROOM) {
+          url.searchParams.delete("room");
+        } else {
+          url.searchParams.set("room", cleanId);
+        }
+        const cleanUrl = url.pathname + (url.search ? url.search : "") + (url.hash ? url.hash : "");
+        window.history.replaceState({}, "", cleanUrl);
       } catch {}
     }
 
@@ -123,6 +129,14 @@ export function useRoom(myDevice: MyDevice | null): {
     }
     currentRoomRef.current = null;
     setRoom({ roomId: null, peers: [], wsStatus: room.wsStatus, joined: false });
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("room");
+        const cleanUrl = url.pathname + (url.search ? url.search : "") + (url.hash ? url.hash : "");
+        window.history.replaceState({}, "", cleanUrl);
+      } catch {}
+    }
   }, [myDevice, send, room.wsStatus]);
 
   const createRoom = useCallback((): string => {

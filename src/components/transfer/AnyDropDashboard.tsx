@@ -21,7 +21,7 @@ import FilePreviewModal      from "@/components/transfer/FilePreviewModal";
 import type { DeviceInfo }   from "@/types/signaling";
 
 type MobileTab = "radar" | "transfer" | "received";
-const DEFAULT_ROOM = "ANYDROP-MAIN-01";
+import { DEFAULT_ROOM } from "@/lib/constants";
 
 export default function AnyDropDashboard() {
   const searchParams = useSearchParams();
@@ -87,6 +87,18 @@ export default function AnyDropDashboard() {
       }
     });
   }, [onSignal, webRtcOnSignal, handleTransferPayload]);
+
+  // Clean ?room=ANYDROP-MAIN-01 immediately from address bar if present
+  useEffect(() => {
+    if (typeof window !== "undefined" && urlRoom === DEFAULT_ROOM) {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("room");
+        const cleanUrl = url.pathname + (url.search ? url.search : "") + (url.hash ? url.hash : "");
+        window.history.replaceState({}, "", cleanUrl);
+      } catch {}
+    }
+  }, [urlRoom]);
 
   useEffect(() => {
     if (device && !room.joined) {

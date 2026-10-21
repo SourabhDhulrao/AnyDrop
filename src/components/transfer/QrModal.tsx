@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Copy, Check, QrCode, Clock } from "lucide-react";
 import QRCode from "qrcode";
+import { DEFAULT_ROOM } from "@/lib/constants";
 
 interface Props {
   open: boolean;
@@ -16,7 +17,9 @@ export default function QrModal({ open, roomId, onClose }: Props) {
   const [timer, setTimer] = useState(300);
 
   const shareUrl = typeof window !== "undefined" && roomId
-    ? `${window.location.origin}/?room=${encodeURIComponent(roomId)}`
+    ? roomId === DEFAULT_ROOM
+      ? `${window.location.origin}/`
+      : `${window.location.origin}/?room=${encodeURIComponent(roomId)}`
     : "";
 
   useEffect(() => {
